@@ -14,6 +14,7 @@ import {
 import { validateCard, readiness, passives, specials } from "../src/domain";
 import { cardsRoutes } from "./routes/cards";
 import { uploadRoutes } from "./routes/uploads";
+import { gamesRoutes } from "./routes/games";
 const app = new Hono<Bindings>();
 app.use("/api/*", async (c, next) => {
   if (
@@ -206,6 +207,7 @@ app.patch("/api/factions/:id", async (c) => {
 });
 app.route("/api", cardsRoutes);
 app.route("/api", uploadRoutes);
+app.route("/api", gamesRoutes);
 app.notFound((c) => c.json({ error: "요청한 항목을 찾을 수 없습니다." }, 404));
 app.onError((e, c) => {
   if (e instanceof HTTPException)

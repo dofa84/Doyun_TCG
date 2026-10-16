@@ -55,7 +55,10 @@ uploadRoutes.get("/images/:key", async (c) => {
     )
       .bind(key)
       .first();
-    if (!usable) throw new HTTPException(403);
+    const game = !usable && await c.env.DB.prepare(
+      "SELECT 1 FROM game_images i JOIN game_members m ON m.game_id=i.game_id WHERE i.image_key=? AND m.user_id=? LIMIT 1",
+    ).bind(key,user.id).first();
+    if (!usable && !game) throw new HTTPException(403);
   }
   const object = await c.env.DB.prepare("SELECT data FROM image_data WHERE key=?").bind(key).first<{ data: number[] }>();
   if (!object) throw new HTTPException(404);
@@ -85,6 +88,8 @@ uploadRoutes.delete("/uploads/card-image/:key", async (c) => {
     throw new HTTPException(409, {
       message: "카드에 연결된 이미지는 삭제할 수 없습니다.",
     });
+  const game = await c.env.DB.prepare("SELECT 1 FROM game_images WHERE image_key=? LIMIT 1").bind(key).first();
+  if (game) throw new HTTPException(409,{message:"대전 스냅샷에 연결된 이미지는 삭제할 수 없습니다."});
   // FK prevents a concurrent card reference from racing the metadata deletion.
   await c.env.DB.prepare("DELETE FROM uploads WHERE key=?").bind(key).run();
   return c.json({ ok: true });

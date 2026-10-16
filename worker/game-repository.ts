@@ -41,10 +41,10 @@ export async function joinGame(db:D1Database,id:string,user:string,session:strin
   const result=await db.batch([
     db.prepare("UPDATE games SET status=?,version=1,turn_number=?,state_json=?,join_request_id=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND version=? AND status='waiting'").bind(state.winner===null?"active":"finished",state.turn,text,request,id,version),
     db.prepare("INSERT INTO game_members(game_id,seat,user_id,faction_id) SELECT ?,1,?,? WHERE changes()=1").bind(id,user,faction),
-    db.prepare("INSERT INTO game_images(game_id,image_key) SELECT ?,value FROM json_each(?) WHERE EXISTS(SELECT 1 FROM games g JOIN game_members m ON m.game_id=g.id AND m.seat=1 WHERE g.id=? AND g.join_request_id=? AND m.user_id=?)").bind(id,JSON.stringify(imageKeys),id,request,user),
+    db.prepare("INSERT OR IGNORE INTO game_images(game_id,image_key) SELECT ?,value FROM json_each(?) WHERE EXISTS(SELECT 1 FROM games g JOIN game_members m ON m.game_id=g.id AND m.seat=1 WHERE g.id=? AND g.join_request_id=? AND m.user_id=?)").bind(id,JSON.stringify(imageKeys),id,request,user),
     db.prepare("UPDATE game_devices SET session1=? WHERE token_hash=? AND game_id=? AND EXISTS(SELECT 1 FROM game_members WHERE game_id=? AND seat=1 AND user_id=?)").bind(session,deviceHash??"",id,id,user),
   ]);
-  if(!result[0].meta.changes)throw conflict();return getGame(db,id);
+  if(!result[0].meta.changes){const saved=await getGame(db,id);if(saved.join_request_id===request&&(await members(db,id))[1]?.user_id===user)return saved;throw conflict()}return getGame(db,id);
 }
 export async function saveAction(db:D1Database,id:string,version:number,request:string,state:GameState,events:GameEvent[]){
   if(await db.prepare("SELECT 1 FROM game_actions WHERE game_id=? AND request_id=?").bind(id,request).first())return getGame(db,id);
