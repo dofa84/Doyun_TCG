@@ -1,6 +1,12 @@
 import { useState, type FormEvent } from "react";
 import { api, type User } from "../api";
-export function Login({ onLogin }: { onLogin: (u: User) => void }) {
+export function Login({
+  onLogin,
+  play = false,
+}: {
+  onLogin: (u: User) => void;
+  play?: boolean;
+}) {
   const [mode, setMode] = useState<"login" | "register">("login"),
     [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
@@ -19,7 +25,7 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
     }
   }
   return (
-    <main className="login">
+    <main className={play ? "login play-login" : "login"}>
       <section className="login-story">
         <div className="brand">
           D<span>✦</span>TCG <small>CARD WORKSHOP</small>
@@ -47,13 +53,23 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
       </section>
       <section className="login-panel">
         <div className="login-box">
-          <p className="eyebrow">WELCOME TO THE WORKSHOP</p>
+          <p className="eyebrow">
+            {play ? "DOYUN TCG · PLAY" : "WELCOME TO THE WORKSHOP"}
+          </p>
           <h2>
-            {mode === "login"
-              ? "카드 공방에 들어가기"
-              : "나만의 카드 제작 시작"}
+            {play
+              ? mode === "login"
+                ? "대전 시작하기"
+                : "플레이어 계정 만들기"
+              : mode === "login"
+                ? "카드 공방에 들어가기"
+                : "나만의 카드 제작 시작"}
           </h2>
-          <p className="muted">내 카드와 진영을 관리하는 공간입니다.</p>
+          <p className="muted">
+            {play
+              ? "로그인 후 진영을 선택하세요. 한 기기에서 두 계정으로 대전합니다."
+              : "내 카드와 진영을 관리하는 공간입니다."}
+          </p>
           <form onSubmit={submit}>
             <label>
               {mode === "login" ? "아이디 또는 이메일" : "이메일"}
@@ -115,7 +131,9 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
               : "이미 계정이 있나요? 로그인"}
           </button>
           <p className="fine">
-            가입 계정은 일반 제작자입니다. 관리자 권한은 운영자가 지정합니다.
+            {play
+              ? "카드 공방과 같은 계정을 사용합니다."
+              : "가입 계정은 일반 제작자입니다. 관리자 권한은 운영자가 지정합니다."}
           </p>
         </div>
       </section>

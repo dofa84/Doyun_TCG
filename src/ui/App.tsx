@@ -10,12 +10,17 @@ import {
 import { Login } from "./Login";
 import { CardEditor } from "./CardEditor";
 import { rarities, passives, specials } from "../domain";
-import { GameWorkspace } from "./game/GameWorkspace";
+import { PlayPage } from "./game/PlayPage";
 type Tab = "dashboard" | "cards" | "factions" | "review" | "balance" | "battle";
 export function App() {
+  const play = location.pathname === "/play" || location.pathname === "/play/";
   const [user, setUser] = useState<User | null>(null),
     [loading, setLoading] = useState(true);
   useEffect(() => {
+    if (!play && new URL(location.href).searchParams.has("game")) {
+      location.replace("/play" + location.search);
+      return;
+    }
     let active = true;
     api("/auth/me")
       .then((r) => {
@@ -29,31 +34,28 @@ export function App() {
       active = false;
     };
   }, []);
-  if (loading) return <div className="loading">카드 공방을 여는 중…</div>;
-  if (!user) return <Login onLogin={setUser} />;
-  return (
-    <Workspace
-      key={user.id}
-      user={user}
-      onLogout={() => setUser(null)}
-      onAccountChanged={setUser}
-    />
-  );
+  if (loading)
+    return (
+      <div className="loading">
+        {play ? "대전 준비 중…" : "카드 공방을 여는 중…"}
+      </div>
+    );
+  if (!user) return <Login onLogin={setUser} play={play} />;
+  if (play)
+    return (
+      <PlayPage
+        key={user.id}
+        user={user}
+        onLogout={() => setUser(null)}
+        onAccountChanged={setUser}
+      />
+    );
+  return <Workspace key={user.id} user={user} onLogout={() => setUser(null)} />;
 }
-function Workspace({
-  user,
-  onLogout,
-  onAccountChanged,
-}: {
-  user: User;
-  onLogout: () => void;
-  onAccountChanged: (u: User) => void;
-}) {
+function Workspace({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [cards, setCards] = useState<Card[]>([]),
     [factions, setFactions] = useState<Faction[]>([]),
-    [tab, setTab] = useState<Tab>(() =>
-      new URL(location.href).searchParams.has("game") ? "battle" : "dashboard",
-    ),
+    [tab, setTab] = useState<Tab>("dashboard"),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [editor, setEditor] = useState<Card | null | undefined>(),
@@ -176,6 +178,10 @@ function Workspace({
               key={t.id}
               className={tab === t.id ? "selected" : ""}
               onClick={() => {
+                if (t.id === "battle") {
+                  location.assign("/play");
+                  return;
+                }
                 setTab(t.id);
                 setFilter("all");
                 setSearch("");
@@ -498,9 +504,6 @@ function Workspace({
                 </div>
               )}
             </section>
-          )}
-          {tab === "battle" && (
-            <GameWorkspace user={user} onAccountChanged={onAccountChanged} />
           )}
           {tab === "balance" && (
             <div className="table-wrap">

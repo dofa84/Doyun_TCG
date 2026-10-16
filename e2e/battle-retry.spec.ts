@@ -66,13 +66,14 @@ test("미확정 생성은 메뉴 이동·새로고침 후 같은 요청으로 �
   await expect(
     page.getByRole("button", { name: "같은 요청 다시 확인", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "▤ 카드 도감", exact: true }).click();
+  await page
+    .getByRole("link", { name: "카드 제작·관리로 이동", exact: true })
+    .click();
   await page.getByRole("button", { name: "⚔ 대전", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "같은 요청 다시 확인", exact: true }),
   ).toBeVisible();
   await page.reload();
-  await page.getByRole("button", { name: "⚔ 대전", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "같은 요청 다시 확인", exact: true }),
   ).toBeVisible();
