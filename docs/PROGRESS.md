@@ -1,5 +1,26 @@
 # Native 실행 기록
 
+## 모바일웹 대전 구현 — 2026-10-16
+
+- 승인 계획: docs/superpowers/plans/2026-10-16-mobile-web-battle-plan.md. 기준589b77b, 브랜치codex/mobile-battle, 지정 checkout에서 직접 실행. 새 worktree/제품 의존성 추가 없음.
+- Task1 589b77b→0c94beb: 순수 엔진/공개 view/효과 정의. import 부재 RED 후 엔진54개 포함 전체green.
+- Task2 0c94beb→9387020: 추가 마이그레이션0005와 원자적 게임 저장. 재시도·CAS·rollback 테스트green.
+- Task3 9387020→e203f36: 두 원래 계정 세션에 묶인 대전 인증/API/사진 참조. 동일 참가 요청의 CAS 경쟁을 실제 DB barrier로 RED 재현 후 해결. 전체71개green.
+- Task4 e203f36→91df985: 모바일 UI·계정 전환·대전 끝까지·중복 재시도·새로고침. 전체 서버71개, 브라우저11개green.
+- Final review: fresh-context whole-branch reviewer, Critical0/Important3/Minor2. 운영/밸런스/상태 문서는 별도 범위로 구분.
+- Final fixed: 종료 결과 개인 조회 — 새 브라우저의 참가자 개인 로그인 결과 제목 부재 RED→GREEN.
+- Final fixed: waiting 생성자 재인증 — 로그아웃/쿠키 소실 뒤 복구 버튼 부재 RED→GREEN. 새 쿠키 권한을 같은 응답에서도 반영.
+- Final fixed: 미확정 요청 유지 — 메뉴 이동 뒤 재시도 버튼 소실 RED→GREEN. 계정별 sessionStorage에 안전한 공개 식별자/행동만 whitelist 저장, 신규 행동은 해결 전 차단. 저장 차단 시 서버 요청 전 실패.
+- 최종 로컬 검증: npm run verify, npx playwright test 전체 서버75개/브라우저14개green. 타입/빌드/Worker dry-run 통과. 운영은 STATUS.md의 별도 검증 결과 참조.
+- 운영0005 적용 및 배포 성공. health200/admin로그인200/games200/미인증401/없는게임404, 390px 모바일 대전 대기방·준비 부족 차단 확인. 실제 대전은 운영 계정1·카드0으로 미실행, 승인 없이 시드하지 않음. 기능 기준커밋ea9db0c.
+- Ruling: 대기방에는 덱 없음. 두 번째 참가·시작에 덱/사진 참조를 원자적으로 고정. 잘못되면 대기방/시작 흐름 수정 비용.
+- Ruling: 기존 이미지 소유자/관리자 열람 권한 유지. 일반 비참가자의 게임 경유 사진 접근과 관리자 게임 상태/로그 우회는 금지. 잘못되면 원본 작품 열람 범위가 기대보다 넓을 수 있으나 덱 순서는 노출하지 않음.
+- Ruling: 운영은 별도 실제 서비스 검증. 로컬 통과로 운영 정상이라 주장하지 않음. 잘못되면 운영 회귀를 놓칠 수 있음.
+- Ruling: 밸런스/승률은 미검증, 실제 플레이 필요. 잘못되면 카드 강함/게임 길이 문제를 놓칠 수 있음.
+- Ruling: 상태 문서는 실제 결과로 갱신. 잘못되면 완료/배포 상태 오안내 위험.
+- Deferred minor: 공격 응답 유실 전용 브라우저 테스트(현 케이스는 첫 오픈을 선택하며, 서버 공격 및 리뷰 집중 재현은 통과).
+- Deferred minor: 첫50개 이후 공개 이벤트 페이지 UI. API after cursor는 제공.
+
 ## 최신 후속: 무료 사진 저장 전환
 
 - R2 제거, D1 image_data 추가. 기존 API URL·접근 권한 유지.
