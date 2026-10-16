@@ -1,0 +1,183 @@
+.game-workspace {
+  max-width: 780px;
+  margin: auto;
+  min-width: 0;
+}
+.game-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.battle-lobby,
+.game-history {
+  background: #fff;
+  color: #172c3a;
+  padding: 24px;
+  border: 1px solid #2e3a50;
+  border-radius: 20px;
+  margin: 16px 0;
+}
+.battle-lobby form {
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+}
+.battle-lobby label {
+  display: grid;
+  gap: 8px;
+}
+.battle-lobby input,
+.battle-lobby select {
+  width: 100%;
+  min-width: 0;
+}
+.account-switch {
+  border-top: 1px solid #334057;
+  padding-top: 20px;
+}
+.battle-status {
+  text-align: center;
+  margin: 20px 0;
+}
+.battle-player {
+  padding: 16px;
+  border: 1px solid #334057;
+  border-radius: 16px;
+  margin: 16px 0;
+  background: #101a2b;
+}
+.battle-player.acting {
+  border-color: #b6ed72;
+}
+.battle-player h3,
+.battle-player p {
+  overflow-wrap: anywhere;
+}
+.battle-player h3 {
+  color: #eff5ff;
+}
+.exodia-track small {
+  color: #b5c2d8;
+}
+.battle-player p {
+  font-size: 12px;
+  color: #a4b0c6;
+}
+.battle-field {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.battle-slot > span {
+  display: block;
+  font-size: 12px;
+  color: #a4b0c6;
+  margin-bottom: 8px;
+}
+.battle-card {
+  display: grid !important;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  overflow: hidden;
+  padding: 10px !important;
+}
+.battle-card img {
+  width: 100%;
+  height: 135px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.battle-card strong {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.battle-card span,
+.battle-card small {
+  font-size: 11px;
+}
+.battle-card meter {
+  width: 100%;
+  height: 10px;
+}
+.battle-empty {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  color: #7e8ba3;
+  border: 1px dashed #334057;
+  border-radius: 12px;
+}
+.exodia-track {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 14px;
+}
+.exodia-track span {
+  color: #53627a;
+  font-size: 22px;
+}
+.exodia-track .collected {
+  color: #c8ec7c;
+}
+.battle-actions {
+  display: grid;
+  gap: 10px;
+  margin: 20px 0;
+}
+.battle-actions button {
+  white-space: normal;
+  text-align: left;
+  min-height: 48px;
+  overflow-wrap: anywhere;
+}
+.battle-actions small {
+  display: block;
+  font-size: 11px;
+  margin-top: 5px;
+}
+.handoff {
+  padding: 20px;
+  border: 1px solid #b6ed72;
+  border-radius: 16px;
+  margin: 20px 0;
+  background: #1e2c27;
+  color: #eff5ff;
+  overflow-wrap: anywhere;
+}
+.handoff button {
+  width: 100%;
+  margin-top: 10px;
+}
+.game-history > button {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  text-align: left;
+}
+.battle-log {
+  margin: 20px 0;
+  font-size: 12px;
+}
+.battle-log p {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .battle-lobby,
+  .game-history {
+    padding: 16px;
+  }
+  .battle-player {
+    padding: 10px;
+  }
+  .battle-card img {
+    height: 100px;
+  }
+  .battle-field {
+    gap: 8px;
+  }
+  .game-toolbar {
+    flex-wrap: wrap;
+  }
+}

@@ -1,15 +1,196 @@
-import {beforeAll,afterAll,it,expect} from "vitest";
-import {gameFixture} from "./game-fixtures";
-import {createLobby,joinGame,saveAction,getMemberGame} from "../worker/game-repository";
-import {applyAction} from "../src/game/engine";
-let f:Awaited<ReturnType<typeof gameFixture>>;
-beforeAll(async()=>{f=await gameFixture()},60000);afterAll(async()=>{await f?.mf.dispose()});
-async function lobby(){return createLobby(f.db,f.users[0].id,f.users[0].session,"f1",crypto.randomUUID())}
-async function started(){const g=await lobby();return joinGame(f.db,g.id,f.users[1].id,f.users[1].session,"f1",crypto.randomUUID(),0)}
-it("생성 재시도는 같은 대기방",async()=>{const id=crypto.randomUUID();const a=await createLobby(f.db,f.users[0].id,f.users[0].session,"f1",id);const b=await createLobby(f.db,f.users[0].id,f.users[0].session,"f1",id);expect(a.id).toBe(b.id);expect(a.status).toBe("waiting");});
-it("동일 계정·준비 부족 참가를 거부하고 waiting 보존",async()=>{const g=await lobby();await expect(joinGame(f.db,g.id,f.users[0].id,f.users[0].session,"f1","same",0)).rejects.toMatchObject({status:409});await f.db.prepare("UPDATE cards SET is_usable=0 WHERE id='gc0'").run();await expect(joinGame(f.db,g.id,f.users[1].id,f.users[1].session,"f1","short",0)).rejects.toMatchObject({status:409});expect((await getMemberGame(f.db,g.id,f.users[0].id)).status).toBe("waiting");await f.db.prepare("UPDATE cards SET is_usable=1 WHERE id='gc0'").run();});
-it("참가 재시도는 덱을 재추첨하지 않고 독립 인스턴스40장 고정",async()=>{const g=await lobby(),rid=crypto.randomUUID();const a=await joinGame(f.db,g.id,f.users[1].id,f.users[1].session,"f1",rid,0),b=await joinGame(f.db,g.id,f.users[1].id,f.users[1].session,"f1",rid,0);expect(a.state_json).toBe(b.state_json);expect(a.version).toBe(1);const s=JSON.parse(a.state_json!);const ids=s.players.flatMap((p:any)=>[...p.deck,...p.waiting,...Object.values(p.slots).filter(Boolean)]).map((c:any)=>c.instance_id);expect(new Set(ids).size).toBe(40);});
-it("동시 CAS는 하나만 저장하고 같은 request_id 재시도는 중복 적용 없음",async()=>{const g=await started(),s=JSON.parse(g.state_json!);const next=applyAction(s,s.active_seat,{type:"open",slot:s.players[s.active_seat].slots.attack?"defense":"attack"});const ids=[crypto.randomUUID(),crypto.randomUUID()];const rs=await Promise.allSettled(ids.map(id=>saveAction(f.db,g.id,1,id,next.state,next.events)));expect(rs.filter(r=>r.status==="fulfilled")).toHaveLength(1);const saved=await f.db.prepare("SELECT request_id FROM game_actions WHERE game_id=?").bind(g.id).first<{request_id:string}>();const duplicate=await saveAction(f.db,g.id,1,saved!.request_id,next.state,next.events);expect(duplicate.version).toBe(2);expect((await f.db.prepare("SELECT count(*) AS n FROM game_actions WHERE game_id=?").bind(g.id).first())?.n).toBe(1);});
-it("후속 INSERT 실패는 상태 UPDATE까지 롤백",async()=>{const g=await started(),s=JSON.parse(g.state_json!);await f.db.exec("CREATE TRIGGER reject_test_event BEFORE INSERT ON game_actions BEGIN SELECT RAISE(ABORT,'test_event_failure'); END;");await expect(saveAction(f.db,g.id,1,"failure",s,[])).rejects.toThrow();expect((await getMemberGame(f.db,g.id,f.users[0].id)).version).toBe(1);await f.db.exec("DROP TRIGGER reject_test_event;");});
-it("같은 참가 요청의 CAS 경쟁도 성공한 동일 결과를 반환한다",async()=>{const g=await lobby(),id=crypto.randomUUID();let arrivals=0,release:()=>void=()=>{};const barrier=new Promise<void>(r=>{release=r});const wrapped={prepare:f.db.prepare.bind(f.db),batch:async(q:D1PreparedStatement[])=>{if(++arrivals===2)release();await barrier;return f.db.batch(q)}} as unknown as D1Database;const results=await Promise.all([0,1].map(()=>joinGame(wrapped,g.id,f.users[1].id,f.users[1].session,"f1",id,0)));expect(results[0].state_json).toBe(results[1].state_json);});
-it("게임 중 원본 수정은 스냅샷에 영향 없고 미지원 효과는 시작 거부",async()=>{const g=await started();await f.db.prepare("UPDATE cards SET attack=999,passive_code='unsupported' WHERE id='gc0'").run();expect((await getMemberGame(f.db,g.id,f.users[0].id)).state_json).toBe(g.state_json);const fresh=await lobby();await expect(joinGame(f.db,fresh.id,f.users[1].id,f.users[1].session,"f1","bad-effect",0)).rejects.toMatchObject({status:400});await f.db.prepare("UPDATE cards SET attack=40,passive_code=NULL WHERE id='gc0'").run();});
+import { beforeAll, afterAll, it, expect } from "vitest";
+import { gameFixture } from "./game-fixtures";
+import {
+  createLobby,
+  joinGame,
+  saveAction,
+  getMemberGame,
+} from "../worker/game-repository";
+import { applyAction } from "../src/game/engine";
+let f: Awaited<ReturnType<typeof gameFixture>>;
+beforeAll(async () => {
+  f = await gameFixture();
+}, 60000);
+afterAll(async () => {
+  await f?.mf.dispose();
+});
+async function lobby() {
+  return createLobby(
+    f.db,
+    f.users[0].id,
+    f.users[0].session,
+    "f1",
+    crypto.randomUUID(),
+  );
+}
+async function started() {
+  const g = await lobby();
+  return joinGame(
+    f.db,
+    g.id,
+    f.users[1].id,
+    f.users[1].session,
+    "f1",
+    crypto.randomUUID(),
+    0,
+  );
+}
+it("생성 재시도는 같은 대기방", async () => {
+  const id = crypto.randomUUID();
+  const a = await createLobby(
+    f.db,
+    f.users[0].id,
+    f.users[0].session,
+    "f1",
+    id,
+  );
+  const b = await createLobby(
+    f.db,
+    f.users[0].id,
+    f.users[0].session,
+    "f1",
+    id,
+  );
+  expect(a.id).toBe(b.id);
+  expect(a.status).toBe("waiting");
+});
+it("동일 계정·준비 부족 참가를 거부하고 waiting 보존", async () => {
+  const g = await lobby();
+  await expect(
+    joinGame(f.db, g.id, f.users[0].id, f.users[0].session, "f1", "same", 0),
+  ).rejects.toMatchObject({ status: 409 });
+  await f.db.prepare("UPDATE cards SET is_usable=0 WHERE id='gc0'").run();
+  await expect(
+    joinGame(f.db, g.id, f.users[1].id, f.users[1].session, "f1", "short", 0),
+  ).rejects.toMatchObject({ status: 409 });
+  expect((await getMemberGame(f.db, g.id, f.users[0].id)).status).toBe(
+    "waiting",
+  );
+  await f.db.prepare("UPDATE cards SET is_usable=1 WHERE id='gc0'").run();
+});
+it("참가 재시도는 덱을 재추첨하지 않고 독립 인스턴스40장 고정", async () => {
+  const g = await lobby(),
+    rid = crypto.randomUUID();
+  const a = await joinGame(
+      f.db,
+      g.id,
+      f.users[1].id,
+      f.users[1].session,
+      "f1",
+      rid,
+      0,
+    ),
+    b = await joinGame(
+      f.db,
+      g.id,
+      f.users[1].id,
+      f.users[1].session,
+      "f1",
+      rid,
+      0,
+    );
+  expect(a.state_json).toBe(b.state_json);
+  expect(a.version).toBe(1);
+  const s = JSON.parse(a.state_json!);
+  const ids = s.players
+    .flatMap((p: any) => [
+      ...p.deck,
+      ...p.waiting,
+      ...Object.values(p.slots).filter(Boolean),
+    ])
+    .map((c: any) => c.instance_id);
+  expect(new Set(ids).size).toBe(40);
+});
+it("동시 CAS는 하나만 저장하고 같은 request_id 재시도는 중복 적용 없음", async () => {
+  const g = await started(),
+    s = JSON.parse(g.state_json!);
+  const next = applyAction(s, s.active_seat, {
+    type: "open",
+    slot: s.players[s.active_seat].slots.attack ? "defense" : "attack",
+  });
+  const ids = [crypto.randomUUID(), crypto.randomUUID()];
+  const rs = await Promise.allSettled(
+    ids.map((id) => saveAction(f.db, g.id, 1, id, next.state, next.events)),
+  );
+  expect(rs.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+  const saved = await f.db
+    .prepare("SELECT request_id FROM game_actions WHERE game_id=?")
+    .bind(g.id)
+    .first<{ request_id: string }>();
+  const duplicate = await saveAction(
+    f.db,
+    g.id,
+    1,
+    saved!.request_id,
+    next.state,
+    next.events,
+  );
+  expect(duplicate.version).toBe(2);
+  expect(
+    (
+      await f.db
+        .prepare("SELECT count(*) AS n FROM game_actions WHERE game_id=?")
+        .bind(g.id)
+        .first()
+    )?.n,
+  ).toBe(1);
+});
+it("후속 INSERT 실패는 상태 UPDATE까지 롤백", async () => {
+  const g = await started(),
+    s = JSON.parse(g.state_json!);
+  await f.db.exec(
+    "CREATE TRIGGER reject_test_event BEFORE INSERT ON game_actions BEGIN SELECT RAISE(ABORT,'test_event_failure'); END;",
+  );
+  await expect(saveAction(f.db, g.id, 1, "failure", s, [])).rejects.toThrow();
+  expect((await getMemberGame(f.db, g.id, f.users[0].id)).version).toBe(1);
+  await f.db.exec("DROP TRIGGER reject_test_event;");
+});
+it("같은 참가 요청의 CAS 경쟁도 성공한 동일 결과를 반환한다", async () => {
+  const g = await lobby(),
+    id = crypto.randomUUID();
+  let arrivals = 0,
+    release: () => void = () => {};
+  const barrier = new Promise<void>((r) => {
+    release = r;
+  });
+  const wrapped = {
+    prepare: f.db.prepare.bind(f.db),
+    batch: async (q: D1PreparedStatement[]) => {
+      if (++arrivals === 2) release();
+      await barrier;
+      return f.db.batch(q);
+    },
+  } as unknown as D1Database;
+  const results = await Promise.all(
+    [0, 1].map(() =>
+      joinGame(wrapped, g.id, f.users[1].id, f.users[1].session, "f1", id, 0),
+    ),
+  );
+  expect(results[0].state_json).toBe(results[1].state_json);
+});
+it("게임 중 원본 수정은 스냅샷에 영향 없고 미지원 효과는 시작 거부", async () => {
+  const g = await started();
+  await f.db
+    .prepare(
+      "UPDATE cards SET attack=999,passive_code='unsupported' WHERE id='gc0'",
+    )
+    .run();
+  expect((await getMemberGame(f.db, g.id, f.users[0].id)).state_json).toBe(
+    g.state_json,
+  );
+  const fresh = await lobby();
+  await expect(
+    joinGame(
+      f.db,
+      fresh.id,
+      f.users[1].id,
+      f.users[1].session,
+      "f1",
+      "bad-effect",
+      0,
+    ),
+  ).rejects.toMatchObject({ status: 400 });
+  await f.db
+    .prepare("UPDATE cards SET attack=40,passive_code=NULL WHERE id='gc0'")
+    .run();
+});

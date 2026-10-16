@@ -10,7 +10,8 @@ import {
 import { Login } from "./Login";
 import { CardEditor } from "./CardEditor";
 import { rarities, passives, specials } from "../domain";
-type Tab = "dashboard" | "cards" | "factions" | "review" | "balance";
+import { GameWorkspace } from "./game/GameWorkspace";
+type Tab = "dashboard" | "cards" | "factions" | "review" | "balance" | "battle";
 export function App() {
   const [user, setUser] = useState<User | null>(null),
     [loading, setLoading] = useState(true);
@@ -30,12 +31,29 @@ export function App() {
   }, []);
   if (loading) return <div className="loading">카드 공방을 여는 중…</div>;
   if (!user) return <Login onLogin={setUser} />;
-  return <Workspace key={user.id} user={user} onLogout={() => setUser(null)} />;
+  return (
+    <Workspace
+      key={user.id}
+      user={user}
+      onLogout={() => setUser(null)}
+      onAccountChanged={setUser}
+    />
+  );
 }
-function Workspace({ user, onLogout }: { user: User; onLogout: () => void }) {
+function Workspace({
+  user,
+  onLogout,
+  onAccountChanged,
+}: {
+  user: User;
+  onLogout: () => void;
+  onAccountChanged: (u: User) => void;
+}) {
   const [cards, setCards] = useState<Card[]>([]),
     [factions, setFactions] = useState<Faction[]>([]),
-    [tab, setTab] = useState<Tab>("dashboard"),
+    [tab, setTab] = useState<Tab>(() =>
+      new URL(location.href).searchParams.has("game") ? "battle" : "dashboard",
+    ),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [editor, setEditor] = useState<Card | null | undefined>(),
@@ -127,6 +145,7 @@ function Workspace({ user, onLogout }: { user: User; onLogout: () => void }) {
     ready = factions.filter((f) => f.readiness.ready);
   const tabs: { id: Tab; icon: string; label: string }[] = [
     { id: "dashboard", icon: "▦", label: "작업실" },
+    { id: "battle", icon: "⚔", label: "대전" },
     { id: "cards", icon: "▤", label: "카드 도감" },
     { id: "factions", icon: "⚑", label: "진영 관리" },
     { id: "balance", icon: "▥", label: "수치 비교" },
@@ -215,16 +234,20 @@ function Workspace({ user, onLogout }: { user: User; onLogout: () => void }) {
                       ? "함께 만드는 진영"
                       : tab === "balance"
                         ? "카드 수치 비교"
-                        : "출전을 기다리는 카드"}
+                        : tab === "battle"
+                          ? "두 계정, 한 기기의 대전"
+                          : "출전을 기다리는 카드"}
               </h1>
               <p className="muted">
                 {tab === "dashboard"
                   ? "한 장씩 채워가는 우리만의 카드 게임."
-                  : tab === "factions"
-                    ? "승인·활성 카드 20장 이상, 엑조디아 5장이 모이면 출전 준비 완료."
-                    : tab === "balance"
-                      ? "HP와 공격력을 비교합니다. 실제 승률은 전투 기록이 생긴 뒤 확인할 수 있습니다."
-                      : "카드를 만들고, 다듬고, 전투를 준비하세요."}
+                  : tab === "battle"
+                    ? "각자 로그인하고, 한 기기에서 번갈아 대전하세요. 전투는 서버가 판정합니다."
+                    : tab === "factions"
+                      ? "승인·활성 카드 20장 이상, 엑조디아 5장이 모이면 출전 준비 완료."
+                      : tab === "balance"
+                        ? "HP와 공격력을 비교합니다. 실제 승률은 전투 기록이 생긴 뒤 확인할 수 있습니다."
+                        : "카드를 만들고, 다듬고, 전투를 준비하세요."}
               </p>
             </div>
             {tab === "factions" ? (
@@ -234,7 +257,7 @@ function Workspace({ user, onLogout }: { user: User; onLogout: () => void }) {
               >
                 ＋ 진영 만들기
               </button>
-            ) : (
+            ) : tab !== "battle" ? (
               <button
                 className="primary"
                 onClick={() => {
@@ -246,7 +269,7 @@ function Workspace({ user, onLogout }: { user: User; onLogout: () => void }) {
               >
                 ＋ 카드 만들기
               </button>
-            )}
+            ) : null}
           </div>
           {error && (
             <div className="error" role="alert">
@@ -475,6 +498,9 @@ function Workspace({ user, onLogout }: { user: User; onLogout: () => void }) {
                 </div>
               )}
             </section>
+          )}
+          {tab === "battle" && (
+            <GameWorkspace user={user} onAccountChanged={onAccountChanged} />
           )}
           {tab === "balance" && (
             <div className="table-wrap">
