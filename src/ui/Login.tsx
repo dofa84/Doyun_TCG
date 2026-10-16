@@ -56,14 +56,19 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
           <p className="muted">내 카드와 진영을 관리하는 공간입니다.</p>
           <form onSubmit={submit}>
             <label>
-              이메일
+              {mode === "login" ? "아이디 또는 이메일" : "이메일"}
               <input
-                type="email"
+                type={mode === "login" ? "text" : "email"}
                 autoComplete="username"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                maxLength={254}
+                placeholder={
+                  mode === "login"
+                    ? "아이디 또는 이메일 입력"
+                    : "you@example.com"
+                }
               />
             </label>
             <label>

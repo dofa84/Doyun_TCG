@@ -62,7 +62,10 @@ app.post("/api/auth/:action", async (c) => {
     password = body.password;
   if (
     email.length > 254 ||
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+    !(
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+      (action === "login" && /^[a-z][a-z0-9_-]{2,31}$/.test(email))
+    ) ||
     password.length > 128
   )
     throw new HTTPException(400, { message: "입력 형식을 확인해주세요." });
@@ -78,8 +81,10 @@ app.post("/api/auth/:action", async (c) => {
     await issueSession(c, id);
     return c.json({ user: { id, email, role: "user" } }, 201);
   }
-  const user = await c.env.DB.prepare("SELECT * FROM users WHERE email=?")
-    .bind(email)
+  const user = await c.env.DB.prepare(
+    "SELECT * FROM users WHERE email=? OR login_name=?",
+  )
+    .bind(email, email)
     .first<{
       id: string;
       email: string;
@@ -152,6 +157,7 @@ app.get("/api/factions/:id", async (c) => {
 });
 app.post("/api/factions", async (c) => {
   const b = await c.req.json();
+  if (b && typeof b.name === "string") b.name = b.name.normalize("NFC").trim();
   if (!b || typeof b !== "object" || Array.isArray(b))
     throw new HTTPException(400, { message: "진영 정보를 확인해주세요." });
   if (
@@ -180,6 +186,7 @@ app.patch("/api/factions/:id", async (c) => {
   if (f.owner_user_id !== c.get("user").id && c.get("user").role !== "admin")
     throw new HTTPException(403);
   const b = await c.req.json();
+  if (b && typeof b.name === "string") b.name = b.name.normalize("NFC").trim();
   if (!b || typeof b !== "object" || Array.isArray(b))
     throw new HTTPException(400, { message: "진영 정보를 확인해주세요." });
   if (
@@ -207,6 +214,8 @@ app.onError((e, c) => {
       e.status,
     );
   const message = String(e);
+  if (message.includes("factions_name_unique"))
+    return c.json({ error: "이미 사용 중인 진영 이름입니다." }, 409);
   if (message.includes("exodia_limit"))
     return c.json({ error: "진영별 엑조디아는 최대 5장입니다." }, 409);
   if (message.includes("UNIQUE constraint failed: users.email"))

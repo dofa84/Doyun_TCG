@@ -1,7 +1,8 @@
 import { beforeAll, afterAll, it, expect } from "vitest";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 import { build } from "esbuild";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import { makeAdmin } from "../scripts/bootstrap-admin.mjs";
 let mf: Miniflare,
   db: D1Database,
   ownerCookie: string,
@@ -64,9 +65,13 @@ beforeAll(async () => {
     }),
   );
   db = (await mf.getD1Database("DB")) as unknown as D1Database;
-  const sql = readFileSync("db/migrations/0001_initial.sql", "utf8");
-  // D1 exec expects statements without internal newlines.
-  await db.exec(sql.replace(/\n/g, " "));
+  for (const filename of readdirSync("db/migrations")
+    .filter((n) => n.endsWith(".sql"))
+    .sort()) {
+    await db.exec(
+      readFileSync("db/migrations/" + filename, "utf8").replace(/\n/g, " "),
+    );
+  }
   for (const email of [
     "owner@example.test",
     "other@example.test",
@@ -154,6 +159,27 @@ it("회원가입으로 관리자 권한을 얻을 수 없고 로그인 비밀번
   expect(
     (await req("/auth/me", "GET", undefined, "tcg_session=forged")).status,
   ).toBe(401);
+});
+it("운영 명령으로 만든 관리자 아이디로 로그인할 수 있다", async () => {
+  const admin = makeAdmin({
+    login: "administrator",
+    password: "test-short",
+    remote: false,
+  });
+  await db
+    .prepare(
+      "INSERT INTO users(id,email,login_name,password_hash,role) VALUES(?,?,?,?,'admin')",
+    )
+    .bind(admin.id, admin.email, admin.login_name, admin.password_hash)
+    .run();
+  const r = await req(
+    "/auth/login",
+    "POST",
+    { email: "administrator", password: "test-short" },
+    "",
+  );
+  expect(r.status).toBe(200);
+  expect(r.data.user.role).toBe("admin");
 });
 it("비밀번호 해시는 사용자 응답에 노출되지 않는다", async () => {
   expect(JSON.stringify((await req("/auth/me")).data)).not.toContain(
@@ -375,6 +401,46 @@ it("관리자는 다른 제작자의 엑조디아를 보관해 슬롯을 회수�
     (await req("/cards", "POST", card({ faction_id: id, is_exodia: true })))
       .status,
   ).toBe(201);
+});
+it("진영 이름 중복은 금지하되 제작자의 수정 권한을 유지한다", async () => {
+  const created = await req("/factions", "POST", {
+    name: "이름 중복 검사",
+    description: "",
+  });
+  expect(created.status).toBe(201);
+  expect(
+    (
+      await req(
+        "/factions",
+        "POST",
+        { name: "  이름 중복 검사  ", description: "" },
+        otherCookie,
+      )
+    ).status,
+  ).toBe(409);
+  expect(
+    (
+      await req("/factions/" + created.data.id, "PATCH", {
+        name: "이름 중복 검사",
+        description: "제작자 수정",
+      })
+    ).status,
+  ).toBe(200);
+  expect(
+    (
+      await req(
+        "/factions/" + created.data.id,
+        "PATCH",
+        { name: "이름 중복 검사", description: "타인 수정" },
+        otherCookie,
+      )
+    ).status,
+  ).toBe(403);
+  const r = await Promise.all([
+    req("/factions", "POST", { name: "동시 이름", description: "" }),
+    req("/factions", "POST", { name: "동시 이름", description: "" }),
+  ]);
+  expect(r.map((x) => x.status).sort()).toEqual([201, 409]);
 });
 it("로그아웃 및 만료 세션 거부", async () => {
   const r = await req(

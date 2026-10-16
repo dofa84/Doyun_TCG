@@ -91,7 +91,9 @@ test("계정 전환 후 목록 요청이 실패해도 이전 비공개 카드는
 }) => {
   await setup(page, "user");
   await page.getByRole("button", { name: "로그아웃", exact: true }).click();
-  await page.getByLabel("이메일", { exact: true }).fill("b@example.test");
+  await page
+    .getByLabel("아이디 또는 이메일", { exact: true })
+    .fill("b@example.test");
   await page
     .getByLabel("비밀번호", { exact: true })
     .fill("Local-test-password-123");
@@ -134,13 +136,11 @@ test("저장 성공 후 목록 갱신이 실패해도 동일한 카드를 다시
   const state = await setup(page);
   await page.getByRole("button", { name: "＋ 카드 만들기" }).click();
   await page.getByLabel("카드 이름", { exact: true }).fill("새로운 카드");
-  await page
-    .locator("input[type=file]")
-    .setInputFiles({
-      name: "x.png",
-      mimeType: "image/png",
-      buffer: Buffer.from("test"),
-    });
+  await page.locator("input[type=file]").setInputFiles({
+    name: "x.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("test"),
+  });
   await expect(page.getByAltText("카드 이미지 미리보기")).toBeVisible();
   await page.getByRole("button", { name: "카드 저장", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "카드 편집" })).toHaveCount(0);

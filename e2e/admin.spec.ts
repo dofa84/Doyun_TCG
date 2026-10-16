@@ -95,7 +95,7 @@ test("가입부터 사진 카드 제작, 심사, 관리자 승인과 활성화",
   await expect(
     page.getByRole("heading", { name: "카드 공방에 들어가기" }),
   ).toBeVisible();
-  await page.getByLabel("이메일", { exact: true }).fill(email);
+  await page.getByLabel("아이디 또는 이메일", { exact: true }).fill(email);
   await page
     .getByLabel("비밀번호", { exact: true })
     .fill("Local-test-password-123");

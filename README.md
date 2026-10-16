@@ -23,6 +23,18 @@ npm run admin:local -- your-email@example.com
 
 개발 DB는 `.wrangler/state`에 보관되며 운영 DB와 별개다. 로컬 비밀번호나 테스트 계정은 Git에 포함되지 않는다.
 
+### 관리자 아이디 로그인
+
+로그인은 이메일 또는 운영자가 지정한 아이디를 받는다. 회원가입은 계속 이메일 기반이다.
+
+운영 관리자 생성:
+
+```sh
+node scripts/bootstrap-admin.mjs --remote --login admin --generate
+```
+
+비밀번호는 생성 시 .local 폴더의 권한 600 파일에만 기록하며 콘솔에 출력하지 않는다. 같은 아이디의 기존 계정은 덮어쓰지 않는다. 로컬 생성은 --local을 사용하고 비밀번호를 표준 입력으로 전달한다. 운영에서는 12자 미만 비밀번호를 거부한다.
+
 ## 구현 범위
 
 - 가입·로그인·로그아웃, 서버 세션, user/admin 권한
@@ -45,7 +57,7 @@ Miniflare D1/R2에서 인증·소유권·심사 전환·동시 요청을 통합 
 
 ## 운영 연결
 
-`wrangler.toml`의 DB ID는 로컬용 자리 표시자다. 운영 DB와 버킷을 연결하기 전 배포하지 않는다. 설치 패키지는 lockfile로 고정한다. 원격 생성·배포·관리자 지정은 [운영 문서](docs/runbook.md) 참고.
+`wrangler.toml`의 database_id는 실제 운영 D1, preview_database_id는 기존 로컬 데이터 식별자다. 운영 R2 버킷 연결 전 배포하지 않는다. 설치 패키지는 lockfile로 고정한다. 원격 생성·배포·관리자 지정은 [운영 문서](docs/runbook.md) 참고.
 
 세션은 7일 만료, 비밀번호는 PBKDF2-SHA256 100,000회로 해시, 인증 시도는 IP별 15분 30회 제한. 운영 HTTPS에서는 Secure 쿠키를 사용한다. 이메일 확인/비밀번호 찾기는 미구현이며 가족·초대 테스트 범위에서 사용한다. 공개 운영 시 해당 기능과 가입 정책을 재검토해야 한다.
 
