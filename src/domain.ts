@@ -8,17 +8,17 @@ export const passives = {
   fury: {
     label: "맹공",
     type: "attack",
-    description: "공격 시 기본 공격력 +10% (소수점 버림)",
+    description: "방어 칸에 있을 때 아군 공격 카드의 피해 공격력 +10%",
   },
   armor: {
     label: "철갑",
     type: "defense",
-    description: "받는 일반 공격 피해 -10% (소수점 버림)",
+    description: "방어 칸에서 자신이 받는 일반 공격 피해 -10%",
   },
   regeneration: {
     label: "재생",
     type: "special",
-    description: "자기 턴 시작 시 최대 HP의 5% 회복, 최대 HP 초과 불가",
+    description: "방어 칸에서 자기 턴 시작 시 최대 HP의 5% 회복, 게임당 3회",
   },
 } as const;
 export const specials = {
