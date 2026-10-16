@@ -90,4 +90,19 @@ test("두 계정 모바일 교대 대전·새로고침·승패와 각 계정 결
   expect(one.games.find((g: any) => g.id === id)?.winner).toBe(
     two.games.find((g: any) => g.id === id)?.winner,
   );
+  const fresh = await page.context().browser()!.newContext({ baseURL: origin });
+  try {
+    const login = await fresh.request.post("/api/auth/login", {
+      headers: { Origin: origin },
+      data: { email: seed.users[0].email, password: seed.users[0].password },
+    });
+    expect(login.status()).toBe(200);
+    const resultPage = await fresh.newPage();
+    await resultPage.goto(`/?game=${id}`);
+    await expect(
+      resultPage.getByRole("heading", { name: "대전 결과", exact: true }),
+    ).toBeVisible();
+  } finally {
+    await fresh.close();
+  }
 });

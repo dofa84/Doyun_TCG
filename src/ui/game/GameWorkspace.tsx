@@ -2,10 +2,15 @@ import { useState, useEffect, useRef } from "react";
 import { api, type User, type Faction } from "../../api";
 import { gameApi, GameHttpError, type GameSession } from "../../game/api";
 import type { GameAction } from "../../game/types";
+import {
+  readPending,
+  writePending,
+  clearPending,
+  type PendingOperation,
+} from "../../game/pending-operation";
 import { Lobby } from "./Lobby";
 import { BattleBoard } from "./BattleBoard";
 import "./game.css";
-type Pending = { path: string; body: unknown };
 type HistoryRow = {
   id: string;
   status: string;
@@ -30,7 +35,9 @@ export function GameWorkspace({
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
-    [pending, setPending] = useState<Pending | null>(null),
+    [pending, setPending] = useState<PendingOperation | null>(() =>
+      readPending(user.id),
+    ),
     [events, setEvents] = useState<
       { version: number; events: { text: string }[] }[]
     >([]);
@@ -82,6 +89,12 @@ export function GameWorkspace({
   }, [id, offset]);
   async function mutate(path: string, body: unknown) {
     const op = { path, body };
+    try {
+      writePending(user.id, op);
+    } catch (e) {
+      setError((e as Error).message);
+      return;
+    }
     setPending(op);
     setBusy(true);
     setError("");
@@ -89,6 +102,7 @@ export function GameWorkspace({
     try {
       const result = await gameApi(path, "POST", body);
       if (epoch !== generation.current) return;
+      clearPending(user.id);
       setPending(null);
       if (result.id !== id) select(result.id);
       setGame(result);
@@ -103,6 +117,7 @@ export function GameWorkspace({
     } catch (e) {
       if (epoch !== generation.current) return;
       if (e instanceof GameHttpError && e.status < 500) {
+        clearPending(user.id);
         setPending(null);
         if (e.status === 409) {
           await refresh();
@@ -151,7 +166,7 @@ export function GameWorkspace({
       )}
       {loading && !game ? (
         <p>대전 정보를 불러오는 중…</p>
-      ) : game?.view && game.device_ready ? (
+      ) : game?.view && (game.device_ready || game.status === "finished") ? (
         <BattleBoard game={game} busy={disabled} onAction={action} />
       ) : (
         (!id || game) && (

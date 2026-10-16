@@ -41,7 +41,12 @@ export function Lobby({
     }
   }
   const same = game?.members[0]?.user_id === user.id;
-  const recovery = game && game.status !== "waiting" && !game.device_ready;
+  const recovery =
+    game &&
+    game.status !== "finished" &&
+    (game.status === "waiting"
+      ? same && !game.authorized_seats[0]
+      : !game.device_ready);
   return (
     <section className="battle-lobby">
       <h2>

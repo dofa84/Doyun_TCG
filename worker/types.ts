@@ -5,4 +5,7 @@ export type User = {
   status: string;
 };
 export type Env = { DB: D1Database; ASSETS: Fetcher };
-export type Bindings = { Bindings: Env; Variables: { user: User } };
+export type Bindings = {
+  Bindings: Env;
+  Variables: { user: User; gameDeviceHash?: string };
+};

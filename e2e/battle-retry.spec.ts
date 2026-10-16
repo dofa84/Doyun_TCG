@@ -1,5 +1,124 @@
 import { test, expect } from "@playwright/test";
 import { seedBattle, createAndJoin } from "./battle-fixture";
+test("대기방 생성자 로그아웃·쿠키 소실 뒤 첫 계정 재인증과 두 번째 참가 복구", async ({
+  page,
+}) => {
+  const seed = await seedBattle(page);
+  await page.getByRole("button", { name: "⚔ 대전", exact: true }).click();
+  await page.getByLabel("출전 진영", { exact: true }).selectOption(seed.id);
+  await page
+    .getByRole("button", { name: "대기방 만들기", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "두 번째 플레이어 참가" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "로그아웃", exact: true }).click();
+  await page.context().clearCookies();
+  await page
+    .getByLabel("아이디 또는 이메일", { exact: true })
+    .fill(seed.users[0].email);
+  await page
+    .getByLabel("비밀번호", { exact: true })
+    .fill(seed.users[0].password);
+  await page.getByRole("button", { name: "로그인 →", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "대전 기기 다시 인증" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "이 계정 인증", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "두 번째 플레이어 참가" }),
+  ).toBeVisible();
+  await page.getByLabel("참가자 아이디 또는 이메일").fill(seed.users[1].email);
+  await page.getByLabel("참가자 비밀번호").fill(seed.users[1].password);
+  await page.getByRole("button", { name: "계정 전환", exact: true }).click();
+  await page.getByLabel("출전 진영", { exact: true }).selectOption(seed.id);
+  await page
+    .getByRole("button", { name: "이 계정으로 참가", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "대전 중", exact: true }),
+  ).toBeVisible();
+});
+test("미확정 생성은 메뉴 이동·새로고침 후 같은 요청으로 복원", async ({
+  page,
+}) => {
+  const seed = await seedBattle(page);
+  let first = true,
+    requestId = "",
+    retryId = "";
+  await page.route("**/api/games", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    if (first) {
+      first = false;
+      requestId = route.request().postDataJSON().request_id;
+      await route.fetch();
+      await route.abort("failed");
+    } else {
+      retryId = route.request().postDataJSON().request_id;
+      await route.continue();
+    }
+  });
+  await page.getByRole("button", { name: "⚔ 대전", exact: true }).click();
+  await page.getByLabel("출전 진영", { exact: true }).selectOption(seed.id);
+  await page
+    .getByRole("button", { name: "대기방 만들기", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "같은 요청 다시 확인", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "▤ 카드 도감", exact: true }).click();
+  await page.getByRole("button", { name: "⚔ 대전", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "같은 요청 다시 확인", exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "⚔ 대전", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "같은 요청 다시 확인", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "대기방 만들기", exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByRole("button", { name: "같은 요청 다시 확인", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "두 번째 플레이어 참가" }),
+  ).toBeVisible();
+  expect(retryId).toBe(requestId);
+  expect(
+    (await (await page.request.get("/api/games")).json()).games,
+  ).toHaveLength(1);
+});
+test("로그아웃 뒤 원래 두 계정으로 기기 재인증하면 같은 게임 복원", async ({
+  page,
+}) => {
+  const seed = await seedBattle(page),
+    id = await createAndJoin(page, seed),
+    before = await (await page.request.get(`/api/games/${id}`)).json();
+  await page.getByRole("button", { name: "로그아웃", exact: true }).click();
+  await page
+    .getByLabel("아이디 또는 이메일", { exact: true })
+    .fill(seed.users[0].email);
+  await page
+    .getByLabel("비밀번호", { exact: true })
+    .fill(seed.users[0].password);
+  await page.getByRole("button", { name: "로그인 →", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "대전 기기 다시 인증" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "이 계정 인증", exact: true }).click();
+  await page.getByLabel("참가자 아이디 또는 이메일").fill(seed.users[1].email);
+  await page.getByLabel("참가자 비밀번호").fill(seed.users[1].password);
+  await page.getByRole("button", { name: "계정 전환", exact: true }).click();
+  await page.getByRole("button", { name: "이 계정 인증", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "대전 중", exact: true }),
+  ).toBeVisible();
+  const after = await (await page.request.get(`/api/games/${id}`)).json();
+  expect(after.view).toEqual(before.view);
+  expect(after.version).toBe(1);
+});
 test("생성 뒤 서버 오류 응답도 같은 요청으로 재확인해 방 중복 생성 없음", async ({
   page,
 }) => {

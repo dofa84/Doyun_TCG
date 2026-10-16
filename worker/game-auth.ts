@@ -16,11 +16,13 @@ export async function currentSession(c: Context<Bindings>) {
 }
 export async function readDevice(c: Context<Bindings>, id: string) {
   const token = getCookie(c, "tcg_game_device");
-  const row = token
+  const hash =
+    c.get("gameDeviceHash") ?? (token ? await digest(token) : undefined);
+  const row = hash
     ? await c.env.DB.prepare(
         "SELECT * FROM game_devices WHERE token_hash=? AND game_id=? AND expires_at>?",
       )
-        .bind(await digest(token), id, Date.now())
+        .bind(hash, id, Date.now())
         .first<Device>()
     : null;
   const ms = await members(c.env.DB, id),
@@ -61,6 +63,7 @@ export async function authorizeDevice(
     });
   }
   const session = await currentSession(c);
+  c.set("gameDeviceHash", hash);
   await c.env.DB.prepare(
     `UPDATE game_devices SET ${seat === 0 ? "session0" : "session1"}=? WHERE token_hash=? AND game_id=?`,
   )
