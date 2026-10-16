@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { api, imageUrl, type Card, type Faction } from "../api";
 import { rarities, passives, specials } from "../domain";
+import { compressCardImage } from "../image-upload";
 export function CardEditor({
   card,
   factions,
@@ -34,7 +35,7 @@ export function CardEditor({
     setError("");
     try {
       const data = new FormData();
-      data.set("file", file);
+      data.set("file", await compressCardImage(file));
       field("image_key", (await api("/uploads/card-image", "POST", data)).key);
     } catch (e) {
       setError((e as Error).message);
@@ -101,7 +102,7 @@ export function CardEditor({
                   <div>
                     <span>＋</span>
                     <p>카드의 얼굴을 올려주세요</p>
-                    <small>PNG · JPEG · WebP / 최대 5 MiB</small>
+                    <small>PNG · JPEG · WebP / 원본 최대 10 MiB</small>
                   </div>
                 )}
               </div>
@@ -114,6 +115,7 @@ export function CardEditor({
                   onChange={(e) => upload(e.target.files?.[0])}
                 />
               </label>
+              <p className="muted">사진은 최대 1200px · 512 KiB로 자동 압축해 저장합니다. 원본은 저장하지 않습니다.</p>
               <div className="preview-stats">
                 <strong>{v.name || "이름 없는 영웅"}</strong>
                 <span>

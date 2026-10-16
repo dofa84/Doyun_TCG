@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { validPng } from "./image-fixture";
 const faction = {
   id: "f",
   name: "진영",
@@ -139,7 +140,7 @@ test("저장 성공 후 목록 갱신이 실패해도 동일한 카드를 다시
   await page.locator("input[type=file]").setInputFiles({
     name: "x.png",
     mimeType: "image/png",
-    buffer: Buffer.from("test"),
+    buffer: await validPng(page),
   });
   await expect(page.getByAltText("카드 이미지 미리보기")).toBeVisible();
   await page.getByRole("button", { name: "카드 저장", exact: true }).click();

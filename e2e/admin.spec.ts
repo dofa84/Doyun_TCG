@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { spawnSync } from "node:child_process";
+import { validPng } from "./image-fixture";
 test("가입부터 사진 카드 제작, 심사, 관리자 승인과 활성화", async ({
   page,
 }) => {
@@ -38,10 +39,7 @@ test("가입부터 사진 카드 제작, 심사, 관리자 승인과 활성화",
   await page.locator("input[type=file]").setInputFiles({
     name: "star.png",
     mimeType: "image/png",
-    buffer: Buffer.from(
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aRZkAAAAASUVORK5CYII=",
-      "base64",
-    ),
+    buffer: await validPng(page),
   });
   await expect(page.getByAltText("카드 이미지 미리보기")).toBeVisible();
   await page.getByRole("button", { name: "카드 저장", exact: true }).click();

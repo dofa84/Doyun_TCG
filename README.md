@@ -1,6 +1,6 @@
 # DOYUN TCG · 카드 공방
 
-React + TypeScript 웹 어드민과 Cloudflare Worker / D1 / R2 API.
+React + TypeScript 웹 어드민과 Cloudflare Worker / D1 API. R2 구독은 필요하지 않다.
 
 ## 로컬 실행
 
@@ -53,11 +53,13 @@ node scripts/bootstrap-admin.mjs --remote --login admin --generate
 npm run verify
 ```
 
-Miniflare D1/R2에서 인증·소유권·심사 전환·동시 요청을 통합 검증한다. E2E 실행은 `docs/runbook.md` 참고.
+Miniflare D1에서 인증·소유권·사진 저장·심사 전환·동시 요청을 통합 검증한다. E2E 실행은 `docs/runbook.md` 참고.
 
 ## 운영 연결
 
-`wrangler.toml`의 database_id는 실제 운영 D1, preview_database_id는 기존 로컬 데이터 식별자다. 운영 R2 버킷 연결 전 배포하지 않는다. 설치 패키지는 lockfile로 고정한다. 원격 생성·배포·관리자 지정은 [운영 문서](docs/runbook.md) 참고.
+`wrangler.toml`의 database_id는 실제 운영 D1, preview_database_id는 기존 로컬 데이터 식별자다. 마이그레이션 0004까지 적용한 뒤 배포한다. 설치 패키지는 lockfile로 고정한다. 원격 생성·배포·관리자 지정은 [운영 문서](docs/runbook.md) 참고.
+
+사진은 기기에서 긴 변 최대 1200px·512 KiB 이하로 압축한 뒤 D1에 저장한다. 선택 가능한 원본은 PNG/JPEG/WebP 10 MiB 이하이며 원본은 서버에 저장하지 않는다. 가족 테스트용 무료 한도 설계이며, 무제한 저장·요청을 보장하지 않는다.
 
 세션은 7일 만료, 비밀번호는 PBKDF2-SHA256 100,000회로 해시, 인증 시도는 IP별 15분 30회 제한. 운영 HTTPS에서는 Secure 쿠키를 사용한다. 이메일 확인/비밀번호 찾기는 미구현이며 가족·초대 테스트 범위에서 사용한다. 공개 운영 시 해당 기능과 가입 정책을 재검토해야 한다.
 

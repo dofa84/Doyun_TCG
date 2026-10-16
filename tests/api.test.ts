@@ -61,7 +61,6 @@ beforeAll(async () => {
       script: out.outputFiles[0].text,
       compatibilityDate: "2026-10-01",
       d1Databases: ["DB"],
-      r2Buckets: ["IMAGES"],
     }),
   );
   db = (await mf.getD1Database("DB")) as unknown as D1Database;
@@ -346,11 +345,11 @@ it("승인·활성 20장과 엑조디아 5장 준비 조건을 API에서 검증�
   r = (await req("/factions")).data.find((x: any) => x.id === f);
   expect(r.readiness.ready).toBe(false);
 });
-it("5 MiB 초과 사진과 연결된 이미지 삭제를 거부한다", async () => {
+it("512 KiB 초과 사진과 연결된 이미지 삭제를 거부한다", async () => {
   const f = new FormData();
   f.set(
     "file",
-    new File([new Uint8Array(5 * 1024 * 1024 + 1)], "big.png", {
+    new File([new Uint8Array(512 * 1024 + 1)], "big.png", {
       type: "image/png",
     }),
   );
@@ -364,6 +363,27 @@ it("5 MiB 초과 사진과 연결된 이미지 삭제를 거부한다", async ()
       )
     ).status,
   ).toBe(409);
+});
+it("R2 없이 D1에 사진 원본을 저장하고 인증된 소유자에게 동일한 바이트를 반환한다", async () => {
+  const stored = await db.prepare("SELECT length(data) AS size FROM image_data WHERE key=?").bind(image).first();
+  expect(stored?.size).toBe(28);
+  const response = await mf.dispatchFetch("http://localhost/api/images/" + encodeURIComponent(image), {
+    headers: { Cookie: ownerCookie },
+  });
+  expect(response.status).toBe(200);
+  expect(response.headers.get("content-type")).toBe("image/png");
+  expect(new Uint8Array(await response.arrayBuffer())).toEqual(Uint8Array.from([137,80,78,71,13,10,26,10,...new Array(20).fill(0)]));
+});
+it("미참조 이미지 삭제는 D1 바이트와 메타데이터를 함께 제거한다", async () => {
+  const data = new FormData();
+  data.set("file", new File([Uint8Array.from([255,216,255,...new Array(20).fill(0)])], "delete.jpg", { type: "image/jpeg" }));
+  const uploaded = await req("/uploads/card-image", "POST", data);
+  expect(uploaded.status).toBe(201);
+  const key = uploaded.data.key;
+  expect((await req("/uploads/card-image/" + encodeURIComponent(key), "DELETE", {}, otherCookie)).status).toBe(403);
+  expect((await req("/uploads/card-image/" + encodeURIComponent(key), "DELETE", {})).status).toBe(200);
+  expect(await db.prepare("SELECT key FROM uploads WHERE key=?").bind(key).first()).toBeNull();
+  expect(await db.prepare("SELECT key FROM image_data WHERE key=?").bind(key).first()).toBeNull();
 });
 it("동시 저장에서 한 요청만 성공하고 이력도 한 번만 추가된다", async () => {
   const c = (await req("/cards", "POST", card())).data.id;

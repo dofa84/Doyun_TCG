@@ -22,10 +22,10 @@ uploadRoutes.post("/uploads/card-image", async (c) => {
     !file ||
     typeof file === "string" ||
     file.size < 12 ||
-    file.size > 5 * 1024 * 1024
+    file.size > 512 * 1024
   )
     throw new HTTPException(400, {
-      message: "PNG/JPEG/WebP 이미지를 5 MiB 이하로 올려주세요.",
+      message: "사진 저장 한도는 512 KiB입니다. 어드민에서 사진을 다시 선택해 압축해주세요.",
     });
   const data = await file.arrayBuffer();
   if (!imageType(new Uint8Array(data), file.type))
@@ -33,25 +33,19 @@ uploadRoutes.post("/uploads/card-image", async (c) => {
       message: "이미지 파일 내용과 형식이 일치하지 않습니다.",
     });
   const key = c.get("user").id + "/" + crypto.randomUUID();
-  await c.env.IMAGES.put(key, data, {
-    httpMetadata: { contentType: file.type },
-  });
-  try {
-    await c.env.DB.prepare(
+  await c.env.DB.batch([
+    c.env.DB.prepare(
       "INSERT INTO uploads(key,owner_user_id,mime) VALUES(?,?,?)",
     )
-      .bind(key, c.get("user").id, file.type)
-      .run();
-  } catch (e) {
-    await c.env.IMAGES.delete(key);
-    throw e;
-  }
+      .bind(key, c.get("user").id, file.type),
+    c.env.DB.prepare("INSERT INTO image_data(key,data) VALUES(?,?)").bind(key, data),
+  ]);
   return c.json({ key, url: "/api/images/" + encodeURIComponent(key) }, 201);
 });
 uploadRoutes.get("/images/:key", async (c) => {
   const key = c.req.param("key"),
     user = c.get("user");
-  const record = await c.env.DB.prepare("SELECT * FROM uploads WHERE key=?")
+  const record = await c.env.DB.prepare("SELECT owner_user_id,mime FROM uploads WHERE key=?")
     .bind(key)
     .first();
   if (!record) throw new HTTPException(404);
@@ -63,9 +57,9 @@ uploadRoutes.get("/images/:key", async (c) => {
       .first();
     if (!usable) throw new HTTPException(403);
   }
-  const object = await c.env.IMAGES.get(key);
+  const object = await c.env.DB.prepare("SELECT data FROM image_data WHERE key=?").bind(key).first<{ data: number[] }>();
   if (!object) throw new HTTPException(404);
-  return new Response(object.body, {
+  return new Response(Uint8Array.from(object.data), {
     headers: {
       "Content-Type": String(record.mime),
       "Cache-Control": "private, no-store",
@@ -93,6 +87,5 @@ uploadRoutes.delete("/uploads/card-image/:key", async (c) => {
     });
   // FK prevents a concurrent card reference from racing the metadata deletion.
   await c.env.DB.prepare("DELETE FROM uploads WHERE key=?").bind(key).run();
-  await c.env.IMAGES.delete(key);
   return c.json({ ok: true });
 });

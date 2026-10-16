@@ -28,8 +28,8 @@ app.use("/api/*", async (c, next) => {
 app.use(
   "/api/*",
   bodyLimit({
-    maxSize: 6 * 1024 * 1024,
-    onError: (c) => c.json({ error: "파일은 5 MiB 이하로 올려주세요." }, 413),
+    maxSize: 640 * 1024,
+    onError: (c) => c.json({ error: "저장 요청이 너무 큽니다. 사진을 다시 선택해 압축해주세요." }, 413),
   }),
 );
 app.get("/api/health", (c) => c.json({ ok: true, service: "doyun-tcg" }));

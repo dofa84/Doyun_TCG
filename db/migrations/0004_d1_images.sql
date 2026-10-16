@@ -1,0 +1,4 @@
+CREATE TABLE image_data (
+  key TEXT PRIMARY KEY REFERENCES uploads(key) ON DELETE CASCADE,
+  data BLOB NOT NULL CHECK(length(data) BETWEEN 12 AND 524288)
+);

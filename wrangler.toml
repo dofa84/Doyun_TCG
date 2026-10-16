@@ -15,7 +15,3 @@ database_name = "doyun-tcg-db"
 database_id = "a107d4dc-d9a1-4709-acea-4dc0d3751c74"
 preview_database_id = "00000000-0000-0000-0000-000000000000"
 migrations_dir = "db/migrations"
-
-[[r2_buckets]]
-binding = "IMAGES"
-bucket_name = "doyun-tcg-images"
