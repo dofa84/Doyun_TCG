@@ -18,10 +18,11 @@
 - 원격 D1 doyun-tcg-db 생성 및 마이그레이션 0001~0003 적용 완료. R2/Worker 운영 배포는 아직 대기.
 - wrangler.toml에는 실제 운영 DB ID를 연결했다. preview_database_id로 기존 로컬 DB를 보존한다.
 - 로컬 관리자 아이디 로그인 성공(HTTP 200/admin) 확인. 운영 관리자도 별도 강한 비밀번호로 생성했으며 자격 증명은 Git 제외 .local 폴더에 권한 600으로 보관.
-- GitHub 코드 업로드 준비. 최종 push 및 원격 CI 결과는 별도 확인.
+- GitHub main 업로드 완료(구현 기준 2b25ae8). GitHub Actions verify 성공: 서버·도메인 35개, 브라우저 4개, 타입 검사·빌드·dry-run.
 - 기존 Cloudflare 실패 로그에서 저장소 가져오기 실패 확인. Cloudflare GitHub 앱의 선택 저장소에 TCG가 없었던 상태를 발견했으며, 사용자 작업 후 전체 저장소 접근 상태로 바뀐 것을 읽기로 확인했다. 이 작업에서 GitHub 앱 권한을 저장하지 않았다.
 - Worker 빌드 명령을 npm run build로 저장. 배포 명령은 npx wrangler deploy, 운영 브랜치는 main.
-- 운영 로그인·실제 사진 저장·승인 흐름과 GitHub 자동 배포는 미검증이다.
+- 실제 Cloudflare 자동 빌드 b2f339ba에서 저장소 복제·의존성 설치·웹 빌드·정적 파일 업로드까지 성공. 배포는 R2 버킷 doyun-tcg-images 미존재(code 10085)로 실패. R2 목록 API도 구독 활성화 필요(code 10042)를 반환.
+- GitHub→Cloudflare 자동 빌드 실행은 검증됐으나 운영 서비스 배포·운영 로그인·실제 운영 사진 저장은 미검증이다.
 
 ## 후속 보완
 

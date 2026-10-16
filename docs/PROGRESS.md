@@ -31,3 +31,17 @@
 - Final minor deferred: R2 삭제 실패 시 고아 객체 재시도/정리.
 - 최종 검증: npm run verify 통과 (31 tests, TypeScript, Vite build, Wrangler dry-run), npx playwright test 4/4 통과.
 - 외부 상태 변경: 상위 withdoyun/.git 소실 확인. 이 작업의 삭제/이동 대상이 아니며 원인 미확인. 원본 Git 상태 비교는 불가능함을 STATUS.md에 기록.
+
+## 계정·운영 연결 후속 작업
+
+- 최신 사용자 요청: 로컬 관리자 계정 생성, 운영 강한 임시 비밀번호 분리, GitHub 업로드·Cloudflare 계정 연결 실행.
+- 최신 사용자 결정: 진영 이름 중복 불가, 제작자 수정 가능. 이전 중복 허용 기본값 폐기.
+- 운영 D1 생성 및 0001~0003 마이그레이션 적용. 기존 로컬 DB ID 보존.
+- 로컬 관리자 실제 API 200/admin 및 브라우저 검수 메뉴 노출 확인. 운영 계정은 DB에 생성했으나 서비스 로그인은 배포 전이라 미검증.
+- 자격 증명은 Git 제외 .local/의 파일 권한 600으로 저장. 출력·문서·Git에는 비밀번호를 기록하지 않음.
+- 테스트 중복 진영 2개만 구분 이름으로 변경. 카드/진영 ID와 관계 보존.
+- 신규 기능 RED→GREEN: 관리자 아이디 로그인, 운영 짧은 비밀번호 생성 거부, 진영 중복/동시 생성 제한과 제작자 수정 권한.
+- 로컬 전체 verify 및 브라우저 테스트 통과, GitHub main push 완료. 원격 CI 35개 + 브라우저 4개 통과.
+- Cloudflare 빌드 명령 npm run build 저장. 사용자 GitHub 앱 접근 업데이트 후 disconnected 경고 소멸 확인.
+- Cloudflare main 빌드 b2f339ba는 웹 빌드까지 성공, 배포는 R2 버킷 미존재 10085로 실패. 구독은 사용자가 직접 활성화하기로 선택했고 아직 10042 확인.
+- 첨부 상세 답변 재검토로 확인한 기존 규칙 누락과 추가 결정 항목은 docs/game-rules-audit.md에 기록. 제안은 미승인으로 표시.
