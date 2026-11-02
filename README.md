@@ -1,6 +1,7 @@
-# DOYUN TCG · 카드 공방
+# DOYOON TCG · 카드 공방
 
-React + TypeScript 웹 어드민과 Cloudflare Worker / D1 API. R2 구독은 필요하지 않다.
+초등학교 5학년 학생이 친구들과 포켓몬 카드같은 캐릭터 카드를 만들어 놀 수 있는 TCG
+
 
 ## 로컬 실행
 
